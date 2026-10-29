@@ -1,48 +1,38 @@
 # Clean Stream Ripper
 
-A high-performance YouTube and media stream ripper for **desktop** and **mobile**, designed with the signature dark gradient styling of **Clean Audio Trimmer**.
+A high-performance personal desktop YouTube and media stream ripper with native Windows support, featuring the custom 3D gradient play-and-download badge and the dark aesthetic of **Clean Audio Trimmer**.
 
 ![Clean Stream Ripper](frontend/icon.png)
 
 ## Highlights
 
-- **Desktop & Mobile Responsive**: Optimized for phone touch screens and desktop monitors alike.
-- **Progressive Web App (PWA)**: Installable directly to your phone's home screen.
-- **Web Share Target API**: In the official YouTube mobile app, tap **Share → Clean Stream Ripper** to open and rip links in one tap.
-- **Smart Formats & Codecs**:
-  - **Video (MP4)**: Best available (up to 4K), 1080p Full HD, 720p HD, 480p, 360p with audio automatically merged via FFmpeg.
-  - **Audio (MP3 / M4A)**: High quality 320kbps MP3 extraction or original AAC audio.
-- **Time-Range Trimmer**: Cut and rip specific segments without downloading multi-hour files.
-- **Real-Time Progress**: Live SSE (Server-Sent Events) streaming download speed, size, and conversion state.
-- **Zero Config FFmpeg**: Includes standalone bundled FFmpeg binaries via `imageio-ffmpeg`.
+- **Standalone Windows Desktop App**: Launches directly in a native desktop window with no browser tab or command prompt required.
+- **Custom 3D App Icon**: Branded with the glossy 3D purple/magenta play & download arrow logo (`icon.ico` / `icon.png`).
+- **Direct Stream Slicing (HTTP Range Fetching)**: Download and clip *only* the specific timestamps you want (`00:01:30 - 00:03:00`) directly from YouTube's stream without downloading the entire video first.
+- **High Quality MP3 & M4A Extraction**: 320 kbps MP3 conversion or original AAC audio.
+- **Video Modes (MP4)**: Best available (up to 4K), 1080p Full HD, 720p HD, 480p, 360p with audio automatically merged via bundled FFmpeg.
+- **Live SSE Progress**: Real-time progress percentage, download speed in MB/s, size transferred, and ETA.
+- **Bundled FFmpeg Engine**: Runs out of the box with zero system PATH configuration needed.
 
 ---
 
-## Quick Start
+## How to Run
 
-### 1. Install Dependencies
-```bash
-pip install -r requirements.txt
+### 1. Launch the Desktop Window Directly
+```powershell
+python desktop_main.py
 ```
+This opens the native desktop app window directly with your custom icon.
 
-### 2. Start the Server
-```bash
-python run.py
+### 2. Standalone Built Executable (`.exe`)
+Run:
+```powershell
+dist\"Clean Stream Ripper"\"Clean Stream Ripper.exe"
 ```
+You can create a shortcut to this `.exe` on your Desktop or pin it to your Windows Taskbar!
 
-Output:
-```text
- * Local Desktop URL:  http://localhost:8000
- * Mobile Phone URL:   http://192.168.x.x:8000
+### 3. Rebuilding the Executable
+If you make code or style changes and want to update the `.exe`:
+```powershell
+python build_exe.py
 ```
-
----
-
-## Mobile Usage (PWA & Share Sheet)
-
-1. Make sure your phone is connected to the same Wi-Fi network as your computer.
-2. Open the **Mobile Phone URL** in Chrome (Android) or Safari (iOS).
-3. Tap **Add to Home Screen** / **Install App**.
-4. Now, whenever you are watching a video in the YouTube app:
-   - Tap **Share** → **Clean Stream Ripper**
-   - The app opens with the video loaded and ready to rip!
