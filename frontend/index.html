@@ -126,10 +126,15 @@
             </div>
 
             <div id="audioFormatBox" class="control-field hidden">
-              <label class="field-label" for="selectAudioFormat">Audio Format</label>
+              <label class="field-label" for="selectAudioFormat">Audio Format & Bitrate</label>
               <select id="selectAudioFormat" class="select-styled">
-                <option value="mp3" selected>MP3 High Quality (320k)</option>
-                <option value="m4a">Original AAC (M4A)</option>
+                <option value="mp3-320" selected>MP3 - 320 kbps (Best Quality)</option>
+                <option value="mp3-256">MP3 - 256 kbps (High Quality)</option>
+                <option value="mp3-192">MP3 - 192 kbps (Standard)</option>
+                <option value="mp3-128">MP3 - 128 kbps (Medium / Compact)</option>
+                <option value="mp3-96">MP3 - 96 kbps (Speech / Low)</option>
+                <option value="mp3-64">MP3 - 64 kbps (Voice / Smallest)</option>
+                <option value="m4a">Original AAC (.m4a direct)</option>
               </select>
             </div>
           </div>

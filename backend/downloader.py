@@ -172,13 +172,20 @@ def _download_worker(job_id: str, url: str, options: Dict[str, Any]):
         ydl_opts["force_keyframes_at_cuts"] = True
 
     if mode == "audio":
-        if audio_format == "mp3":
+        if audio_format.startswith("mp3"):
+            # Extract bitrate (e.g. "mp3-320", "mp3-192", "mp3-128", "mp3-64")
+            bitrate = "320"
+            if "-" in audio_format:
+                bitrate = audio_format.split("-", 1)[1]
+            elif audio_format == "mp3":
+                bitrate = "320"
+
             ydl_opts.update({
                 "format": "bestaudio/best",
                 "postprocessors": [{
                     "key": "FFmpegExtractAudio",
                     "preferredcodec": "mp3",
-                    "preferredquality": "320",
+                    "preferredquality": bitrate,
                 }],
             })
         else: # m4a
