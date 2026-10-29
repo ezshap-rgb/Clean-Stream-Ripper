@@ -30,18 +30,18 @@
       </div>
     </header>
 
-    <!-- URL Input Card -->
+    <!-- URL / Search Input Card -->
     <div class="card">
       <div class="card-title-row">
-        <span class="card-label">YouTube Video or Stream URL</span>
+        <span class="card-label">YouTube Link or Search Query</span>
       </div>
       <div class="input-group">
         <div class="input-wrapper">
           <input 
-            type="url" 
+            type="text" 
             id="urlInput" 
             class="url-input" 
-            placeholder="Paste YouTube video or stream link..." 
+            placeholder="Paste YouTube link or type to search (e.g. lofi hip hop)..." 
             autocomplete="off" 
             spellcheck="false"
           >
@@ -60,17 +60,31 @@
       </div>
     </div>
 
+    <!-- In-App Search Results Card (hidden initially) -->
+    <div id="searchCard" class="card search-card hidden">
+      <div class="card-title-row">
+        <span class="card-label">Search Results</span>
+        <button id="btnCloseSearch" class="btn-text-close">✕ Close</button>
+      </div>
+      <div id="searchResultsList" class="search-results-list">
+        <!-- Results injected dynamically -->
+      </div>
+    </div>
+
     <!-- Video Preview & Configuration Card (hidden initially) -->
     <div id="previewCard" class="card preview-card hidden">
       <div class="card-title-row">
-        <span class="card-label">Media Preview & Options</span>
+        <span class="card-label">Media Preview & Interactive Trimmer</span>
+      </div>
+
+      <!-- Embedded Video Viewer for precise trimming -->
+      <div class="embedded-viewer-box">
+        <div id="playerContainer" class="player-container">
+          <div id="ytPlayer"></div>
+        </div>
       </div>
 
       <div class="video-meta-box">
-        <div class="thumbnail-wrap">
-          <img id="metaThumb" class="thumbnail-img" src="" alt="Thumbnail">
-          <span id="metaDuration" class="duration-badge">00:00</span>
-        </div>
         <div class="meta-details">
           <div id="metaTitle" class="meta-title">Video Title</div>
           <div id="metaChannel" class="meta-channel">
@@ -79,6 +93,8 @@
               <circle cx="12" cy="7" r="4"></circle>
             </svg>
             <span id="channelName">Channel</span>
+            <span class="meta-separator">•</span>
+            <span id="metaDurationText" class="meta-duration-text">00:00</span>
           </div>
         </div>
       </div>
@@ -145,12 +161,30 @@
 
         <div id="trimInputsRow" class="trim-inputs-row hidden">
           <div class="time-input-box">
-            <label class="field-label">Start Time (HH:MM:SS)</label>
+            <div class="time-input-header">
+              <label class="field-label">Start Time (HH:MM:SS)</label>
+              <button type="button" id="btnSetStartCurrent" class="btn-time-sync" title="Set to current player playback time">
+                ⏱️ Set Current
+              </button>
+            </div>
             <input type="text" id="trimStart" placeholder="00:00:00" value="00:00:00">
           </div>
           <div class="time-input-box">
-            <label class="field-label">End Time (HH:MM:SS)</label>
+            <div class="time-input-header">
+              <label class="field-label">End Time (HH:MM:SS)</label>
+              <button type="button" id="btnSetEndCurrent" class="btn-time-sync" title="Set to current player playback time">
+                ⏱️ Set Current
+              </button>
+            </div>
             <input type="text" id="trimEnd" placeholder="00:05:00">
+          </div>
+          <div class="trim-audition-box">
+            <button type="button" id="btnPreviewTrim" class="btn-secondary btn-audition">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              Audition Trimmed Segment in Viewer
+            </button>
           </div>
         </div>
       </div>
@@ -223,6 +257,7 @@
     </div>
   </div>
 
+  <script src="https://www.youtube.com/iframe_api"></script>
   <script src="app.js"></script>
 </body>
 </html>

@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sse_starlette.sse import EventSourceResponse
 
-from .downloader import fetch_info, start_download_job, get_job_status, DOWNLOAD_DIR
+from .downloader import fetch_info, search_youtube, start_download_job, get_job_status, DOWNLOAD_DIR
 
 app = FastAPI(title="Clean Stream Ripper API")
 
@@ -22,6 +22,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+class SearchRequest(BaseModel):
+    query: str
+    limit: Optional[int] = 6
+
 class InfoRequest(BaseModel):
     url: str
 
@@ -32,6 +36,17 @@ class DownloadRequest(BaseModel):
     audio_format: str = "mp3"
     start_time: Optional[float] = None
     end_time: Optional[float] = None
+
+@app.post("/api/search")
+async def api_search(req: SearchRequest):
+    if not req.query or not req.query.strip():
+        raise HTTPException(status_code=400, detail="Search query is required")
+    try:
+        loop = asyncio.get_event_loop()
+        results = await loop.run_in_executor(None, search_youtube, req.query.strip(), req.limit or 6)
+        return {"results": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/info")
 async def api_info(req: InfoRequest):

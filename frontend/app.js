@@ -1,4 +1,4 @@
-// Clean Stream Ripper Frontend Logic
+// Clean Stream Ripper - Frontend Logic with In-App Search & Embedded Viewer
 document.addEventListener("DOMContentLoaded", () => {
   const urlInput = document.getElementById("urlInput");
   const btnPaste = document.getElementById("btnPaste");
@@ -6,12 +6,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const inspectSpinner = document.getElementById("inspectSpinner");
   const inspectText = document.getElementById("inspectText");
 
+  // Search results elements
+  const searchCard = document.getElementById("searchCard");
+  const searchResultsList = document.getElementById("searchResultsList");
+  const btnCloseSearch = document.getElementById("btnCloseSearch");
+
+  // Preview elements
   const previewCard = document.getElementById("previewCard");
-  const metaThumb = document.getElementById("metaThumb");
-  const metaDuration = document.getElementById("metaDuration");
   const metaTitle = document.getElementById("metaTitle");
   const channelName = document.getElementById("channelName");
+  const metaDurationText = document.getElementById("metaDurationText");
 
+  // Mode and format selectors
   const btnModeVideo = document.getElementById("btnModeVideo");
   const btnModeAudio = document.getElementById("btnModeAudio");
   const videoQualityBox = document.getElementById("videoQualityBox");
@@ -19,11 +25,16 @@ document.addEventListener("DOMContentLoaded", () => {
   const selectResolution = document.getElementById("selectResolution");
   const selectAudioFormat = document.getElementById("selectAudioFormat");
 
+  // Trimmer elements
   const chkTrim = document.getElementById("chkTrim");
   const trimInputsRow = document.getElementById("trimInputsRow");
   const trimStart = document.getElementById("trimStart");
   const trimEnd = document.getElementById("trimEnd");
+  const btnSetStartCurrent = document.getElementById("btnSetStartCurrent");
+  const btnSetEndCurrent = document.getElementById("btnSetEndCurrent");
+  const btnPreviewTrim = document.getElementById("btnPreviewTrim");
 
+  // Download & Progress elements
   const btnStartDownload = document.getElementById("btnStartDownload");
   const progressCard = document.getElementById("progressCard");
   const phasePill = document.getElementById("phasePill");
@@ -42,53 +53,139 @@ document.addEventListener("DOMContentLoaded", () => {
 
   let currentMode = "video";
   let activeEventSource = null;
-  let downloadedFileUrl = null;
+  let ytPlayer = null;
+  let isPlayerApiReady = false;
+  let auditionInterval = null;
 
-  // 1. Check for incoming URL from PWA Share Target (?url=... or ?text=...)
-  function checkUrlParams() {
-    const params = new URLSearchParams(window.location.search);
-    const shared = params.get("url") || params.get("text");
-    if (shared) {
-      // Find URL inside text if user shared YouTube text with title
-      const urlMatch = shared.match(/https?:\/\/[^\s]+/);
-      const urlToUse = urlMatch ? urlMatch[0] : shared;
-      urlInput.value = urlToUse;
-      inspectVideo(urlToUse);
-    }
+  // Window callback for YouTube IFrame API
+  window.onYouTubeIframeAPIReady = () => {
+    isPlayerApiReady = true;
+  };
+
+  // 1. Dynamic Input Label: Change button to "Search" if text isn't a direct URL
+  function isDirectUrl(val) {
+    return /^https?:\/\//i.test(val.trim()) || /youtu\.?be/i.test(val.trim());
   }
+
+  urlInput.addEventListener("input", () => {
+    const val = urlInput.value.trim();
+    if (!val) {
+      inspectText.textContent = "Inspect";
+    } else if (isDirectUrl(val)) {
+      inspectText.textContent = "Inspect";
+    } else {
+      inspectText.textContent = "Search";
+    }
+  });
 
   // 2. Clipboard Paste Handler
   btnPaste.addEventListener("click", async () => {
     try {
       const text = await navigator.clipboard.readText();
-      if (text && text.trim().startsWith("http")) {
+      if (text) {
         urlInput.value = text.trim();
-        inspectVideo(text.trim());
-      } else if (text) {
-        urlInput.value = text.trim();
+        urlInput.dispatchEvent(new Event("input"));
+        handleInspectOrSearch();
       }
     } catch (err) {
       urlInput.focus();
     }
   });
 
-  // 3. Inspect Action
-  btnInspect.addEventListener("click", () => {
-    const url = urlInput.value.trim();
-    if (url) {
-      inspectVideo(url);
-    } else {
+  // 3. Inspect or Search Action
+  function handleInspectOrSearch() {
+    const val = urlInput.value.trim();
+    if (!val) {
       urlInput.focus();
+      return;
     }
-  });
 
+    if (isDirectUrl(val)) {
+      searchCard.classList.add("hidden");
+      inspectVideo(val);
+    } else {
+      performSearch(val);
+    }
+  }
+
+  btnInspect.addEventListener("click", handleInspectOrSearch);
   urlInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      const url = urlInput.value.trim();
-      if (url) inspectVideo(url);
-    }
+    if (e.key === "Enter") handleInspectOrSearch();
   });
 
+  // 4. In-App YouTube Search
+  async function performSearch(query) {
+    inspectSpinner.classList.remove("hidden");
+    inspectText.textContent = "Searching...";
+    btnInspect.disabled = true;
+    previewCard.classList.add("hidden");
+    progressCard.classList.add("hidden");
+    completeCard.classList.add("hidden");
+
+    try {
+      const resp = await fetch("/api/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query, limit: 6 }),
+      });
+
+      if (!resp.ok) {
+        const err = await resp.json();
+        throw new Error(err.detail || "Search failed");
+      }
+
+      const { results } = await resp.json();
+      renderSearchResults(results);
+    } catch (err) {
+      alert(`Search error: ${err.message}`);
+    } finally {
+      inspectSpinner.classList.add("hidden");
+      inspectText.textContent = "Search";
+      btnInspect.disabled = false;
+    }
+  }
+
+  function renderSearchResults(results) {
+    searchResultsList.innerHTML = "";
+    if (!results || results.length === 0) {
+      searchResultsList.innerHTML = `<div style="padding: 16px; text-align: center; color: var(--text-faint);">No videos found for query.</div>`;
+      searchCard.classList.remove("hidden");
+      return;
+    }
+
+    results.forEach((item) => {
+      const div = document.createElement("div");
+      div.className = "search-result-item";
+      div.innerHTML = `
+        <div class="search-item-thumb-box">
+          <img class="search-item-thumb" src="${item.thumbnail}" alt="" loading="lazy">
+          <span class="search-item-dur">${item.duration_str}</span>
+        </div>
+        <div class="search-item-info">
+          <div class="search-item-title">${item.title}</div>
+          <div class="search-item-channel">${item.channel}</div>
+        </div>
+      `;
+
+      div.addEventListener("click", () => {
+        urlInput.value = item.url;
+        urlInput.dispatchEvent(new Event("input"));
+        searchCard.classList.add("hidden");
+        inspectVideo(item.url);
+      });
+
+      searchResultsList.appendChild(div);
+    });
+
+    searchCard.classList.remove("hidden");
+    searchCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  btnCloseSearch.addEventListener("click", () => {
+    searchCard.classList.add("hidden");
+  });
+
+  // 5. Inspect Video & Initialize Embedded Viewer
   async function inspectVideo(url) {
     inspectSpinner.classList.remove("hidden");
     inspectText.textContent = "Loading...";
@@ -112,8 +209,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await resp.json();
       metaTitle.textContent = data.title;
       channelName.textContent = data.channel;
-      metaThumb.src = data.thumbnail;
-      metaDuration.textContent = data.duration_str;
+      metaDurationText.textContent = data.duration_str;
+      trimStart.value = "00:00:00";
       trimEnd.value = data.duration_str;
 
       // Populate available video resolutions
@@ -128,6 +225,9 @@ document.addEventListener("DOMContentLoaded", () => {
         });
       }
 
+      // Initialize or load video into YouTube Embedded Player
+      initOrLoadPlayer(data.id);
+
       previewCard.classList.remove("hidden");
       previewCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
     } catch (err) {
@@ -139,7 +239,92 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // 4. Toggle Mode (Video / Audio)
+  function initOrLoadPlayer(videoId) {
+    if (ytPlayer && typeof ytPlayer.loadVideoById === "function") {
+      ytPlayer.loadVideoById(videoId);
+    } else {
+      ytPlayer = new YT.Player("ytPlayer", {
+        height: "100%",
+        width: "100%",
+        videoId: videoId,
+        playerVars: {
+          autoplay: 0,
+          controls: 1,
+          modestbranding: 1,
+          rel: 0,
+          fs: 1,
+        },
+      });
+    }
+  }
+
+  // 6. Time Formatting & Trimmer Sync Helpers
+  function formatSeconds(sec) {
+    const total = Math.floor(sec || 0);
+    const s = total % 60;
+    const m = Math.floor(total / 60) % 60;
+    const h = Math.floor(total / 3600);
+    return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  }
+
+  function parseTimeToSeconds(timeStr) {
+    if (!timeStr) return null;
+    const parts = timeStr.trim().split(":").map(Number);
+    if (parts.some(isNaN)) return null;
+    if (parts.length === 3) {
+      return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    } else if (parts.length === 2) {
+      return parts[0] * 60 + parts[1];
+    } else if (parts.length === 1) {
+      return parts[0];
+    }
+    return null;
+  }
+
+  btnSetStartCurrent.addEventListener("click", () => {
+    if (ytPlayer && typeof ytPlayer.getCurrentTime === "function") {
+      const curr = ytPlayer.getCurrentTime();
+      trimStart.value = formatSeconds(curr);
+    }
+  });
+
+  btnSetEndCurrent.addEventListener("click", () => {
+    if (ytPlayer && typeof ytPlayer.getCurrentTime === "function") {
+      const curr = ytPlayer.getCurrentTime();
+      trimEnd.value = formatSeconds(curr);
+    }
+  });
+
+  // Audition / Test Play the trimmed segment in the viewer
+  btnPreviewTrim.addEventListener("click", () => {
+    if (!ytPlayer || typeof ytPlayer.seekTo !== "function") return;
+
+    if (auditionInterval) {
+      clearInterval(auditionInterval);
+      auditionInterval = null;
+    }
+
+    const startSec = parseTimeToSeconds(trimStart.value) || 0;
+    const endSec = parseTimeToSeconds(trimEnd.value);
+
+    ytPlayer.seekTo(startSec, true);
+    ytPlayer.playVideo();
+
+    if (endSec && endSec > startSec) {
+      auditionInterval = setInterval(() => {
+        if (ytPlayer && typeof ytPlayer.getCurrentTime === "function") {
+          const curr = ytPlayer.getCurrentTime();
+          if (curr >= endSec) {
+            ytPlayer.pauseVideo();
+            clearInterval(auditionInterval);
+            auditionInterval = null;
+          }
+        }
+      }, 250);
+    }
+  });
+
+  // 7. Toggle Mode (Video / Audio)
   btnModeVideo.addEventListener("click", () => {
     currentMode = "video";
     btnModeVideo.className = "pill-btn active video-active";
@@ -156,7 +341,7 @@ document.addEventListener("DOMContentLoaded", () => {
     videoQualityBox.classList.add("hidden");
   });
 
-  // 5. Trimmer section toggle
+  // 8. Trimmer section toggle
   chkTrim.addEventListener("change", () => {
     if (chkTrim.checked) {
       trimInputsRow.classList.remove("hidden");
@@ -165,21 +350,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  function parseTimeToSeconds(timeStr) {
-    if (!timeStr) return null;
-    const parts = timeStr.trim().split(":").map(Number);
-    if (parts.some(isNaN)) return null;
-    if (parts.length === 3) {
-      return parts[0] * 3600 + parts[1] * 60 + parts[2];
-    } else if (parts.length === 2) {
-      return parts[0] * 60 + parts[1];
-    } else if (parts.length === 1) {
-      return parts[0];
-    }
-    return null;
-  }
-
-  // 6. Start Download Job & Listen for SSE
+  // 9. Start Download Job & Listen for SSE
   btnStartDownload.addEventListener("click", async () => {
     const url = urlInput.value.trim();
     if (!url) return;
@@ -191,6 +362,11 @@ document.addEventListener("DOMContentLoaded", () => {
     percentText.textContent = "0.0%";
     phaseText.textContent = "Initializing download...";
     progressCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+    // Pause player if playing
+    if (ytPlayer && typeof ytPlayer.pauseVideo === "function") {
+      ytPlayer.pauseVideo();
+    }
 
     const payload = {
       url: url,
@@ -284,27 +460,11 @@ document.addEventListener("DOMContentLoaded", () => {
     completeCard.classList.remove("hidden");
 
     completeFileName.textContent = data.display_name || data.filename;
-    downloadedFileUrl = data.download_url;
     btnDownloadFile.href = data.download_url;
     btnDownloadFile.setAttribute("download", data.display_name || data.filename);
 
-    // Auto-trigger browser download dialog
+    // Auto-trigger download
     btnDownloadFile.click();
-
-    // Check Web Share API support
-    if (navigator.share) {
-      btnShareFile.classList.remove("hidden");
-      btnShareFile.onclick = async () => {
-        try {
-          await navigator.share({
-            title: data.display_name,
-            url: window.location.origin + data.download_url,
-          });
-        } catch (e) {
-          console.log("Share skipped or canceled:", e);
-        }
-      };
-    }
 
     completeCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
@@ -313,16 +473,7 @@ document.addEventListener("DOMContentLoaded", () => {
     completeCard.classList.add("hidden");
     previewCard.classList.add("hidden");
     urlInput.value = "";
+    urlInput.dispatchEvent(new Event("input"));
     urlInput.focus();
   });
-
-  // Register service worker if available
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js").catch((err) => {
-      console.log("SW registration notice:", err);
-    });
-  }
-
-  // Initial check
-  checkUrlParams();
 });

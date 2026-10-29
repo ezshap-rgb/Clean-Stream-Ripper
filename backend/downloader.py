@@ -55,6 +55,40 @@ def cleanup_old_files(max_age_seconds: int = 7200):
 def get_job_status(job_id: str) -> Optional[Dict[str, Any]]:
     return jobs.get(job_id)
 
+def search_youtube(query: str, limit: int = 6) -> list:
+    """Search YouTube videos directly using yt-dlp."""
+    ydl_opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "extract_flat": True,
+        "skip_download": True,
+        "socket_timeout": 12,
+        "noplaylist": True,
+    }
+    search_target = f"ytsearch{limit}:{query}"
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        res = ydl.extract_info(search_target, download=False)
+        entries = res.get("entries", []) or []
+
+    results = []
+    for entry in entries:
+        duration = int(entry.get("duration") or 0)
+        minutes, seconds = divmod(duration, 60)
+        hours, minutes = divmod(minutes, 60)
+        duration_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}" if hours else f"{minutes:02d}:{seconds:02d}"
+        
+        vid_id = entry.get("id")
+        results.append({
+            "id": vid_id,
+            "url": f"https://www.youtube.com/watch?v={vid_id}",
+            "title": entry.get("title", "Unknown Title"),
+            "channel": entry.get("uploader") or entry.get("channel") or "Unknown Channel",
+            "duration": duration,
+            "duration_str": duration_str,
+            "thumbnail": entry.get("thumbnail") or (entry.get("thumbnails")[-1]["url"] if entry.get("thumbnails") else f"https://i.ytimg.com/vi/{vid_id}/hqdefault.jpg"),
+        })
+    return results
+
 def fetch_info(url: str) -> Dict[str, Any]:
     """Inspect YouTube video metadata without downloading."""
     ydl_opts = {
