@@ -8,3 +8,4 @@ downloads/
 build/
 dist/
 *.spec
+dist_build/
