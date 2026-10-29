@@ -47,13 +47,13 @@ if __name__ == "__main__":
 
     app_url = f"http://127.0.0.1:{port}"
 
-    # Create native desktop window
+    # Create native desktop window - compact height for zero scrolling on all screens
     window = webview.create_window(
         title="Clean Stream Ripper",
         url=app_url,
-        width=780,
-        height=860,
-        min_size=(540, 640),
+        width=740,
+        height=620,
+        min_size=(640, 500),
         background_color="#070913"
     )
 

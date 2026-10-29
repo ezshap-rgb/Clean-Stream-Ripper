@@ -425,60 +425,68 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  let progressInterval = null;
+
   function trackProgress(job_id) {
-    if (activeEventSource) {
-      activeEventSource.close();
+    if (progressInterval) {
+      clearInterval(progressInterval);
+      progressInterval = null;
     }
 
-    activeEventSource = new EventSource(`/api/progress/${job_id}`);
+    const checkStatus = async () => {
+      try {
+        const resp = await fetch(`/api/status/${job_id}`);
+        if (!resp.ok) return;
+        const data = await resp.json();
 
-    activeEventSource.addEventListener("progress", (e) => {
-      const data = JSON.parse(e.data);
-      const progress = Math.min(Math.max(data.progress || 0, 0), 100);
+        const progress = Math.min(Math.max(data.progress || 0, 0), 100);
+        progressFill.style.width = `${progress}%`;
+        percentText.textContent = `${progress.toFixed(1)}%`;
 
-      progressFill.style.width = `${progress}%`;
-      percentText.textContent = `${progress.toFixed(1)}%`;
+        if (data.phase === "downloading") {
+          phaseText.textContent = currentMode === "video" ? "Downloading Video & Audio Streams..." : "Downloading Audio Stream...";
+        } else if (data.phase === "muxing" || data.phase === "converting") {
+          phaseText.textContent = "Muxing & Merging with FFmpeg...";
+        }
 
-      if (data.phase === "downloading") {
-        phaseText.textContent = currentMode === "video" ? "Downloading Video & Audio Streams..." : "Downloading Audio Stream...";
-      } else if (data.phase === "muxing" || data.phase === "converting") {
-        phaseText.textContent = "Muxing & Merging with FFmpeg...";
+        // Format Speed
+        if (data.speed) {
+          const mbps = (data.speed / (1024 * 1024)).toFixed(2);
+          statSpeed.textContent = `Speed: ${mbps} MB/s`;
+        }
+
+        // Format Size
+        if (data.downloaded_bytes && data.total_bytes) {
+          const dlMB = (data.downloaded_bytes / (1024 * 1024)).toFixed(1);
+          const totMB = (data.total_bytes / (1024 * 1024)).toFixed(1);
+          statSize.textContent = `${dlMB} / ${totMB} MB`;
+        }
+
+        // Format ETA
+        if (data.eta) {
+          const m = Math.floor(data.eta / 60);
+          const s = data.eta % 60;
+          statEta.textContent = `ETA: ${m}:${s < 10 ? "0" : ""}${s}`;
+        }
+
+        if (data.status === "completed") {
+          clearInterval(progressInterval);
+          progressInterval = null;
+          handleDownloadComplete(data);
+        } else if (data.status === "error") {
+          clearInterval(progressInterval);
+          progressInterval = null;
+          alert(`Download Error: ${data.error || "Unknown error occurred"}`);
+          btnStartDownload.disabled = false;
+          progressCard.classList.add("hidden");
+        }
+      } catch (err) {
+        console.error("Poll error:", err);
       }
+    };
 
-      // Format Speed
-      if (data.speed) {
-        const mbps = (data.speed / (1024 * 1024)).toFixed(2);
-        statSpeed.textContent = `Speed: ${mbps} MB/s`;
-      }
-
-      // Format Size
-      if (data.downloaded_bytes && data.total_bytes) {
-        const dlMB = (data.downloaded_bytes / (1024 * 1024)).toFixed(1);
-        const totMB = (data.total_bytes / (1024 * 1024)).toFixed(1);
-        statSize.textContent = `${dlMB} / ${totMB} MB`;
-      }
-
-      // Format ETA
-      if (data.eta) {
-        const m = Math.floor(data.eta / 60);
-        const s = data.eta % 60;
-        statEta.textContent = `ETA: ${m}:${s < 10 ? "0" : ""}${s}`;
-      }
-
-      if (data.status === "completed") {
-        activeEventSource.close();
-        handleDownloadComplete(data);
-      } else if (data.status === "error") {
-        activeEventSource.close();
-        alert(`Download Error: ${data.error || "Unknown error occurred"}`);
-        btnStartDownload.disabled = false;
-        progressCard.classList.add("hidden");
-      }
-    });
-
-    activeEventSource.addEventListener("error", () => {
-      activeEventSource.close();
-    });
+    checkStatus();
+    progressInterval = setInterval(checkStatus, 400);
   }
 
   function handleDownloadComplete(data) {

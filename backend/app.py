@@ -77,6 +77,13 @@ async def api_download(req: DownloadRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/status/{job_id}")
+async def api_status(job_id: str):
+    job = get_job_status(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job
+
 @app.get("/api/progress/{job_id}")
 async def api_progress(job_id: str, request: Request):
     async def event_generator():

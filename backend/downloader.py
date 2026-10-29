@@ -110,7 +110,6 @@ def fetch_info(url: str) -> Dict[str, Any]:
     }
 
 def _download_worker(job_id: str, url: str, options: Dict[str, Any]):
-    cleanup_old_files()
     jobs[job_id]["status"] = "downloading"
     jobs[job_id]["progress"] = 0.0
     jobs[job_id]["speed"] = 0
