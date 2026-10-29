@@ -3,6 +3,15 @@ import sys
 import time
 import socket
 import threading
+
+# Set Windows AppUserModelID so taskbar groups properly with the app icon
+if sys.platform == "win32":
+    try:
+        import ctypes
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("CleanApps.CleanStreamRipper.1.0")
+    except Exception:
+        pass
+
 import uvicorn
 import webview
 
@@ -28,11 +37,22 @@ def wait_for_server(port, timeout=10):
     return False
 
 if __name__ == "__main__":
-    # Locate icon path
+    # Locate icon path across frozen package and development layouts
+    candidates = []
+    if getattr(sys, "frozen", False):
+        exe_dir = os.path.dirname(sys.executable)
+        mei_dir = getattr(sys, "_MEIPASS", exe_dir)
+        candidates.extend([
+            os.path.join(exe_dir, "icon.ico"),
+            os.path.join(mei_dir, "icon.ico"),
+            os.path.join(mei_dir, "frontend", "icon.ico"),
+        ])
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    icon_path = os.path.join(base_dir, "icon.ico")
-    if not os.path.exists(icon_path):
-        icon_path = os.path.join(base_dir, "frontend", "icon.ico")
+    candidates.extend([
+        os.path.join(base_dir, "icon.ico"),
+        os.path.join(base_dir, "frontend", "icon.ico"),
+    ])
+    icon_path = next((p for p in candidates if os.path.exists(p)), None)
 
     port = find_free_port()
 

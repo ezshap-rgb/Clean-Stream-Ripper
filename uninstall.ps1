@@ -18,3 +18,4 @@ Remove-Item -Path $regPath -Recurse -Force -ErrorAction SilentlyContinue
 Start-Process powershell -ArgumentList "-NoProfile -Command `"Start-Sleep -Seconds 1; Remove-Item -Path '$installDir' -Recurse -Force -ErrorAction SilentlyContinue`"" -WindowStyle Hidden
 
 Write-Host "$appName has been cleanly removed from your system." -ForegroundColor Green
+
