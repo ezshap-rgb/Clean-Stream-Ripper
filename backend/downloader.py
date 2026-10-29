@@ -1,18 +1,30 @@
 import os
 import time
 import uuid
-import threading
+import shutil
 import logging
+import threading
 from typing import Dict, Any, Optional
 
+# Configure Bundled FFmpeg & PATH so yt-dlp internal downloaders work smoothly
 try:
     import imageio_ffmpeg
-    DEFAULT_FFMPEG = imageio_ffmpeg.get_ffmpeg_exe()
+    raw_exe = imageio_ffmpeg.get_ffmpeg_exe()
+    exe_dir = os.path.dirname(raw_exe)
+    canonical_ffmpeg = os.path.join(exe_dir, "ffmpeg.exe")
+    if not os.path.exists(canonical_ffmpeg):
+        try:
+            shutil.copyfile(raw_exe, canonical_ffmpeg)
+        except Exception:
+            pass
+    if exe_dir not in os.environ.get("PATH", ""):
+        os.environ["PATH"] = exe_dir + os.pathsep + os.environ.get("PATH", "")
+    DEFAULT_FFMPEG = canonical_ffmpeg if os.path.exists(canonical_ffmpeg) else raw_exe
 except Exception:
-    import shutil
     DEFAULT_FFMPEG = shutil.which("ffmpeg") or "ffmpeg"
 
 import yt_dlp
+from yt_dlp.utils import download_range_func
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("stream_ripper")
@@ -134,13 +146,12 @@ def _download_worker(job_id: str, url: str, options: Dict[str, Any]):
         "ffmpeg_location": DEFAULT_FFMPEG,
     }
 
-    # Time range clipping
+    # Range Download: Downloads ONLY the specified time window directly from stream!
     if start_time is not None or end_time is not None:
-        def custom_download_ranges(info_dict, ydl):
-            s = float(start_time or 0)
-            e = float(end_time or info_dict.get("duration", 0))
-            return [{"start_time": s, "end_time": e}]
-        ydl_opts["download_ranges"] = custom_download_ranges
+        s = float(start_time or 0)
+        e = float(end_time) if end_time is not None else None
+        ydl_opts["download_ranges"] = download_range_func(None, [(s, e)])
+        ydl_opts["force_keyframes_at_cuts"] = True
 
     if mode == "audio":
         if audio_format == "mp3":
@@ -171,7 +182,7 @@ def _download_worker(job_id: str, url: str, options: Dict[str, Any]):
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
+            ydl.download([url])
             
         # Find the generated file matching job_id
         final_file = None
