@@ -1,6 +1,7 @@
 import os
 import json
 import asyncio
+import subprocess
 from typing import Optional
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -128,6 +129,35 @@ async def api_get_file(filename: str):
             "Cache-Control": "no-cache",
         }
     )
+
+class OpenRequest(BaseModel):
+    filename: Optional[str] = None
+
+@app.post("/api/open-folder")
+async def api_open_folder(req: OpenRequest):
+    try:
+        if req.filename:
+            target = os.path.join(DOWNLOAD_DIR, os.path.basename(req.filename))
+            if os.path.exists(target):
+                subprocess.Popen(["explorer", "/select,", os.path.normpath(target)])
+                return {"status": "ok"}
+        subprocess.Popen(["explorer", os.path.normpath(DOWNLOAD_DIR)])
+        return {"status": "ok"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/open-file")
+async def api_open_file(req: OpenRequest):
+    if not req.filename:
+        raise HTTPException(status_code=400, detail="Filename is required")
+    target = os.path.join(DOWNLOAD_DIR, os.path.basename(req.filename))
+    if not os.path.exists(target):
+        raise HTTPException(status_code=404, detail="File not found")
+    try:
+        os.startfile(os.path.normpath(target))
+        return {"status": "ok"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Serve frontend static assets
 FRONTEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend"))

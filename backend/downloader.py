@@ -29,28 +29,13 @@ from yt_dlp.utils import download_range_func
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("stream_ripper")
 
-BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-DOWNLOAD_DIR = os.path.join(BASE_DIR, "downloads")
+# Save directly to user's Windows Downloads directory in a dedicated folder
+USER_DOWNLOADS = os.path.join(os.path.expanduser("~"), "Downloads")
+DOWNLOAD_DIR = os.path.join(USER_DOWNLOADS, "Clean Stream Ripper")
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 # In-memory job state store
 jobs: Dict[str, Dict[str, Any]] = {}
-
-def cleanup_old_files(max_age_seconds: int = 7200):
-    """Clean up files in DOWNLOAD_DIR older than max_age_seconds (default 2 hours)."""
-    now = time.time()
-    try:
-        for fname in os.listdir(DOWNLOAD_DIR):
-            fpath = os.path.join(DOWNLOAD_DIR, fname)
-            if os.path.isfile(fpath):
-                if now - os.path.getmtime(fpath) > max_age_seconds:
-                    try:
-                        os.remove(fpath)
-                        logger.info(f"Cleaned up expired file: {fname}")
-                    except Exception as e:
-                        logger.warning(f"Failed to remove {fpath}: {e}")
-    except Exception as e:
-        logger.warning(f"Error during file cleanup: {e}")
 
 def get_job_status(job_id: str) -> Optional[Dict[str, Any]]:
     return jobs.get(job_id)
@@ -226,18 +211,40 @@ def _download_worker(job_id: str, url: str, options: Dict[str, Any]):
                 break
 
         if final_file:
-            full_path = os.path.join(DOWNLOAD_DIR, final_file)
-            size = os.path.getsize(full_path)
+            clean_name = final_file[len(job_id) + 1:]
+            old_path = os.path.join(DOWNLOAD_DIR, final_file)
+            target_path = os.path.join(DOWNLOAD_DIR, clean_name)
+            
+            # Prevent overwriting existing file with identical name
+            if os.path.exists(target_path):
+                base, ext = os.path.splitext(clean_name)
+                counter = 1
+                while os.path.exists(os.path.join(DOWNLOAD_DIR, f"{base} ({counter}){ext}")):
+                    counter += 1
+                clean_name = f"{base} ({counter}){ext}"
+                target_path = os.path.join(DOWNLOAD_DIR, clean_name)
+
+            try:
+                os.rename(old_path, target_path)
+                actual_name = clean_name
+                actual_path = target_path
+            except Exception:
+                actual_name = final_file
+                actual_path = old_path
+
+            size = os.path.getsize(actual_path)
             jobs[job_id].update({
                 "status": "completed",
                 "phase": "finished",
                 "progress": 100.0,
-                "filename": final_file,
-                "display_name": final_file[len(job_id) + 1:],
+                "filename": actual_name,
+                "display_name": actual_name,
+                "full_path": actual_path,
+                "folder_path": DOWNLOAD_DIR,
                 "size": size,
-                "download_url": f"/api/files/{final_file}",
+                "download_url": f"/api/files/{actual_name}",
             })
-            logger.info(f"Download completed for job {job_id}: {final_file}")
+            logger.info(f"Download saved directly to user Downloads folder: {actual_path}")
         else:
             raise FileNotFoundError("Output file was not found after yt-dlp execution.")
 

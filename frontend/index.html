@@ -228,31 +228,27 @@
         </svg>
       </div>
       <div>
-        <div class="complete-title">Rip Complete & Ready!</div>
+        <div class="complete-title">Rip Complete & Saved to Downloads!</div>
         <div id="completeFileName" class="complete-file-name">video.mp4</div>
+        <div id="completeFilePath" class="complete-file-path">Saved to: Downloads\Clean Stream Ripper</div>
       </div>
       <div class="complete-actions">
-        <a id="btnDownloadFile" class="btn-gradient" href="#" download>
+        <button id="btnOpenFolder" class="btn-gradient" type="button">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="7 10 12 15 17 10"></polyline>
-            <line x1="12" y1="15" x2="12" y2="3"></line>
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
           </svg>
-          Save to Device
-        </a>
-        <button id="btnShareFile" class="btn-secondary hidden">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="18" cy="5" r="3"></circle>
-            <circle cx="6" cy="12" r="3"></circle>
-            <circle cx="18" cy="19" r="3"></circle>
-            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-          </svg>
-          Share
+          Show in File Explorer
         </button>
-        <button id="btnReset" class="btn-secondary">
+        <button id="btnOpenFile" class="btn-secondary" type="button">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+          Play / Open File
+        </button>
+        <button id="btnReset" class="btn-secondary" type="button">
           Rip Another
         </button>
+        <a id="btnDownloadFile" class="hidden" href="#" download></a>
       </div>
     </div>
   </div>

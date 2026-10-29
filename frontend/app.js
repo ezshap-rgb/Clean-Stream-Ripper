@@ -47,8 +47,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const completeCard = document.getElementById("completeCard");
   const completeFileName = document.getElementById("completeFileName");
+  const completeFilePath = document.getElementById("completeFilePath");
+  const btnOpenFolder = document.getElementById("btnOpenFolder");
+  const btnOpenFile = document.getElementById("btnOpenFile");
   const btnDownloadFile = document.getElementById("btnDownloadFile");
-  const btnShareFile = document.getElementById("btnShareFile");
   const btnReset = document.getElementById("btnReset");
 
   let currentMode = "video";
@@ -56,6 +58,31 @@ document.addEventListener("DOMContentLoaded", () => {
   let ytPlayer = null;
   let isPlayerApiReady = false;
   let auditionInterval = null;
+  let lastCompletedFile = null;
+
+  btnOpenFolder.addEventListener("click", async () => {
+    try {
+      await fetch("/api/open-folder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: lastCompletedFile }),
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  });
+
+  btnOpenFile.addEventListener("click", async () => {
+    try {
+      await fetch("/api/open-file", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: lastCompletedFile }),
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  });
 
   // Window callback for YouTube IFrame API
   window.onYouTubeIframeAPIReady = () => {
@@ -459,12 +486,14 @@ document.addEventListener("DOMContentLoaded", () => {
     progressCard.classList.add("hidden");
     completeCard.classList.remove("hidden");
 
+    lastCompletedFile = data.filename;
     completeFileName.textContent = data.display_name || data.filename;
-    btnDownloadFile.href = data.download_url;
-    btnDownloadFile.setAttribute("download", data.display_name || data.filename);
+    completeFilePath.textContent = `📁 ${data.full_path || "Downloads\\Clean Stream Ripper"}`;
 
-    // Auto-trigger download
-    btnDownloadFile.click();
+    if (data.download_url) {
+      btnDownloadFile.href = data.download_url;
+      btnDownloadFile.setAttribute("download", data.display_name || data.filename);
+    }
 
     completeCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
